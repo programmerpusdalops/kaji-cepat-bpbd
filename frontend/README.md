@@ -1,73 +1,54 @@
-# Welcome to your Lovable project
+# Frontend Sistem Kaji Cepat Bencana BPBD
 
-## Project info
+Ini adalah repositori frontend untuk proyek **Disaster Rapid Assessment System (Kaji Cepat Bencana BPBD)**.
+Frontend ini dibangun menggunakan teknologi web modern untuk menyajikan dashboard yang responsif, interaktif, dan mudah digunakan.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Teknologi Utama
 
-## How can I edit this code?
+- **React 18**
+- **Vite**
+- **TypeScript**
+- **Tailwind CSS**
+- **Shadcn UI** & Radix Primitives
+- **React Router**
+- **React Query** (TanStack Query)
+- **React Leaflet** (Map Visualization)
 
-There are several ways of editing your application.
+## Cara Instalasasi & Menjalankan Development Server
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Pastikan Anda telah menginstal `Node.js` (versi 18+ direkomendasikan).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# 1. Install dependencies
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 2. Jalankan development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Secara default, aplikasi akan berjalan di `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Konfigurasi API Backend
 
-**Use GitHub Codespaces**
+Aplikasi ini menggunakan proxy (dikonfigurasi di `vite.config.ts`) untuk menghindari masalah CORS saat development.
+Semua request ke `/api/v1/*` akan di-proxy ke `http://localhost:5000`.
+Pastikan Backend Service Node.js / Express berjalan pada port tersebut.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Struktur Direktori Utama
 
-## What technologies are used for this project?
+- `/src/components` — Komponen UI re-usable (termasuk komponen shadcn).
+- `/src/pages` — Komponen halaman (views) yang dirender berdasarkan route.
+- `/src/context` — React Context, seperti `AuthContext`.
+- `/src/services` — Service layer untuk memanggil API backend.
+- `/src/config` — Konfigurasi statis seperti RBAC rules.
+- `/src/layouts` — Layout utama aplikasi (Sidebar, Navbar).
 
-This project is built with:
+## Role-Based Access Control (RBAC)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Aplikasi memiliki role system yang mengatur visibilitas menu di sidebar dan proteksi rute halaman:
+- **ADMIN**: Akses penuh (Manajemen User, Master Data, dll).
+- **PUSDALOPS**: Operator pusdalops untuk pelaporan dan verifikasi.
+- **TRC**: Tim Reaksi Cepat untuk pengisian form kaji cepat lapangan.
+- **PIMPINAN**: Dashboard monitoring dan laporan eksekutif.
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Pengaturan RBAC dapat ditemukan di `/src/config/rbac.ts`.

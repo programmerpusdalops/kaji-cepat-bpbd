@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { login as apiLogin } from "@/services/apiService";
+import { hasRouteAccess } from "@/config/rbac";
 
 interface User {
+  id: number;
   name: string;
   email: string;
   role: string;
+  phone?: string;
+  instansi?: string;
 }
 
 interface AuthContextType {
@@ -13,6 +17,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Check if the current user can access a given route */
+  hasAccess: (path: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginFn = useCallback(async (email: string, password: string) => {
     const res = await apiLogin(email, password);
+    // res = { token, user } from backend
     setUser(res.user);
     setToken(res.token);
     localStorage.setItem("bpbd_user", JSON.stringify(res.user));
@@ -39,8 +46,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("bpbd_token");
   }, []);
 
+  const hasAccess = useCallback(
+    (path: string) => hasRouteAccess(user?.role, path),
+    [user?.role]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, login: loginFn, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, login: loginFn, logout, hasAccess }}>
       {children}
     </AuthContext.Provider>
   );

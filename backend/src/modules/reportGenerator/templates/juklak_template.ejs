@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kaji Cepat - <%= report_code %></title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        h1, h2, h3, h4 {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+        }
+        h1 { font-size: 14pt; text-align: center; text-decoration: underline; margin-bottom: 20px; }
+        h2 { font-size: 12pt; margin-top: 20px; }
+        p { margin: 0 0 10px 0; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 10pt;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 5px 8px;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: bold;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+        .mb-2 { margin-bottom: 10px; }
+        .mt-4 { margin-top: 20px; }
+        
+        /* Layout helpers */
+        .row { display: flex; flex-wrap: wrap; margin-left: -15px; margin-right: -15px;}
+        .col-6 { width: 50%; }
+        
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        .sub-field {
+            display: flex;
+            margin-bottom: 4px;
+        }
+        .sub-label {
+            min-width: 150px;
+        }
+        .sub-value {
+            flex-grow: 1;
+        }
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+        
+        /* Avoid breaks inside tables */
+        table, tr, td, th, tbody, thead, tfoot {
+            page-break-inside: avoid !important;
+        }
+        .page-break { page-break-after: always; }
+        
+        .header-logo {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-logo">
+        <div style="font-size: 18pt;">BADAN PENANGGULANGAN BENCANA DAERAH</div>
+        <div style="font-size: 14pt;"><%= provinsi %></div>
+    </div>
+
+    <h1>LAPORAN KAJI CEPAT BENCANA</h1>
+    <p class="text-center font-bold" style="margin-top: -15px; margin-bottom: 20px;">Nomor: <%= report_code %></p>
+
+    <!-- I. PENDAHULUAN -->
+    <div class="section-title">I. PENDAHULUAN</div>
+    <div class="sub-field"><div class="sub-label">a. Jenis Kejadian</div><div class="sub-value">: <%= jenis_kejadian %></div></div>
+    <div class="sub-field"><div class="sub-label">b. Waktu Kejadian</div><div class="sub-value">: <%= waktu_kejadian %></div></div>
+    <div class="sub-field"><div class="sub-label">c. Lokasi Kejadian</div><div class="sub-value">: <%= lokasi_kejadian %></div></div>
+    <div class="sub-field"><div class="sub-label">d. Lama Waktu</div><div class="sub-value">: <%= lama_waktu %></div></div>
+    <div class="sub-field" style="display: block;">
+        <div class="sub-label">e. Kronologis Kejadian:</div>
+        <div style="margin-top: 5px; padding-left: 15px; text-align: justify;"><%= kronologis %></div>
+    </div>
+
+    <!-- II. ANALISIS SITUASI DAMPAK -->
+    <div class="section-title mt-4">II. ANALISIS SITUASI DAMPAK</div>
+    <div class="sub-field" style="display: block;">
+        <div class="sub-label">a. Cakupan Wilayah Terdampak:</div>
+        <div style="padding-left: 15px;"><%= cakupan_wilayah %></div>
+    </div>
+
+    <div class="mt-4 font-bold">b. Cakupan Penduduk Terdampak</div>
+    <div style="margin-bottom: 5px;">Total: <%= pt_total %> Jiwa (Laki-laki: <%= pt_laki %>, Perempuan: <%= pt_perempuan %>)</div>
+    <table>
+        <thead>
+            <tr><th colspan="2">Kelompok Rentan</th><th colspan="2">Kelompok Khusus</th></tr>
+            <tr><th>Kategori</th><th>Jumlah</th><th>Kategori</th><th>Jumlah</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Bayi (0-11 bln)</td><td class="text-center"><%= pt_kr_bayi %></td><td>ODGJ</td><td class="text-center"><%= pt_kk_odgj %></td></tr>
+            <tr><td>Balita (12-59 bln)</td><td class="text-center"><%= pt_kr_balita %></td><td>Wanita Usia Subur</td><td class="text-center"><%= pt_kk_wanita_usia_subur %></td></tr>
+            <tr><td>Anak-anak (5-17 thn)</td><td class="text-center"><%= pt_kr_anak %></td><td class="font-bold">Total Khusus</td><td class="text-center font-bold"><%= pt_kk_total %></td></tr>
+            <tr><td>Lansia (≥ 60 thn)</td><td class="text-center"><%= pt_kr_lansia %></td><td colspan="2" rowspan="5"></td></tr>
+            <tr><td>Ibu Hamil</td><td class="text-center"><%= pt_kr_ibu_hamil %></td></tr>
+            <tr><td>Ibu Menyusui</td><td class="text-center"><%= pt_kr_ibu_menyusui %></td></tr>
+            <tr><td>Disabilitas</td><td class="text-center"><%= pt_kr_disabilitas %></td></tr>
+            <tr><td>Orang Sakit</td><td class="text-center"><%= pt_kr_orang_sakit %></td></tr>
+            <tr><td class="font-bold">Total Rentan</td><td class="text-center font-bold"><%= pt_kr_total %></td><td colspan="2"></td></tr>
+        </tbody>
+    </table>
+
+    <div class="mt-4 font-bold">c. Informasi Korban Jiwa / Luka / Terdampak</div>
+    <div class="sub-field"><div class="sub-label">Meninggal</div><div class="sub-value">: <%= korban_meninggal %> Jiwa</div></div>
+    <div class="sub-field"><div class="sub-label">Luka-luka</div><div class="sub-value">: <%= korban_luka %> Jiwa</div></div>
+    <div class="sub-field"><div class="sub-label">Sakit</div><div class="sub-value">: <%= korban_sakit %> Jiwa</div></div>
+    <div class="sub-field"><div class="sub-label">Hilang</div><div class="sub-value">: <%= korban_hilang %> Jiwa</div></div>
+    <div class="sub-field"><div class="sub-label">Mortalitas</div><div class="sub-value">: <%= korban_mortalitas %></div></div>
+    
+    <div class="mt-4 font-bold">d. Informasi Penduduk Mengungsi</div>
+    <div style="margin-bottom: 5px;">Total: <%= pg_total %> Jiwa (<%= pg_jumlah_kk %> KK) (Laki-laki: <%= pg_laki %>, Perempuan: <%= pg_perempuan %>)</div>
+    <table>
+        <thead>
+            <tr><th colspan="2">Kelompok Rentan (Mengungsi)</th><th colspan="2">Kelompok Khusus (Mengungsi)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Bayi (0-11 bln)</td><td class="text-center"><%= pg_kr_bayi %></td><td>ODGJ</td><td class="text-center"><%= pg_kk_odgj %></td></tr>
+            <tr><td>Balita (12-59 bln)</td><td class="text-center"><%= pg_kr_balita %></td><td>Wanita Usia Subur</td><td class="text-center"><%= pg_kk_wanita_usia_subur %></td></tr>
+            <tr><td>Anak-anak (5-17 thn)</td><td class="text-center"><%= pg_kr_anak %></td><td class="font-bold">Total Khusus</td><td class="text-center font-bold"><%= pg_kk_total %></td></tr>
+            <tr><td>Lansia (≥ 60 thn)</td><td class="text-center"><%= pg_kr_lansia %></td><td colspan="2" rowspan="5"></td></tr>
+            <tr><td>Ibu Hamil</td><td class="text-center"><%= pg_kr_ibu_hamil %></td></tr>
+            <tr><td>Ibu Menyusui</td><td class="text-center"><%= pg_kr_ibu_menyusui %></td></tr>
+            <tr><td>Disabilitas</td><td class="text-center"><%= pg_kr_disabilitas %></td></tr>
+            <tr><td>Orang Sakit</td><td class="text-center"><%= pg_kr_orang_sakit %></td></tr>
+            <tr><td class="font-bold">Total Rentan</td><td class="text-center font-bold"><%= pg_kr_total %></td><td colspan="2"></td></tr>
+        </tbody>
+    </table>
+
+    <div class="mt-4 font-bold">e. Informasi Kerusakan</div>
+    <div class="sub-field"><div class="sub-label">Rumah Terdampak</div><div class="sub-value">: <%= rumah_terdampak %> unit</div></div>
+    <div class="sub-field"><div class="sub-label">Rumah Tidak Layak</div><div class="sub-value">: <%= rumah_tidak_layak %> unit</div></div>
+    <div class="sub-field"><div class="sub-label">Jalan</div><div class="sub-value">: <%= kerusakan_jalan %></div></div>
+    <div class="sub-field"><div class="sub-label">Jembatan</div><div class="sub-value">: <%= kerusakan_jembatan %></div></div>
+    <div class="sub-field"><div class="sub-label">Lahan</div><div class="sub-value">: <%= kerusakan_lahan %></div></div>
+    <div class="sub-field"><div class="sub-label">Listrik</div><div class="sub-value">: <%= kerusakan_listrik %></div></div>
+    <div class="sub-field"><div class="sub-label">Telekomunikasi</div><div class="sub-value">: <%= kerusakan_telekomunikasi %></div></div>
+    <div class="sub-field"><div class="sub-label">Air Bersih</div><div class="sub-value">: <%= kerusakan_air_bersih %></div></div>
+    <div class="sub-field"><div class="sub-label">Lainnya</div><div class="sub-value">: <%= kerusakan_lainnya %></div></div>
+
+    <!-- III. INFORMASI UPAYA PENANGANAN DARURAT -->
+    <div class="section-title mt-4">III. INFORMASI UPAYA PENANGANAN DARURAT</div>
+    <div class="mb-2"><strong>a. Upaya Penyelamatan dan Evakuasi:</strong><br><div style="padding-left:15px"><%= upaya_evakuasi %></div></div>
+    <div class="mb-2"><strong>b. Upaya Pemenuhan Kebutuhan:</strong><br><div style="padding-left:15px"><%= upaya_kebutuhan %></div></div>
+    <div class="mb-2"><strong>c. Pemulihan Sarana dan Prasarana:</strong><br><div style="padding-left:15px"><%= upaya_pemulihan %></div></div>
+
+    <!-- IV. INFORMASI KEBUTUHAN TINDAKAN -->
+    <div class="section-title mt-4">IV. INFORMASI KEBUTUHAN TINDAKAN</div>
+    <table>
+        <thead>
+            <tr><th>No</th><th>Kegiatan</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+            <% kebutuhan_list.forEach(function(k) { %>
+            <tr>
+                <td class="text-center"><%= k.no %></td>
+                <td><%= k.kegiatan %></td>
+                <td><%= k.detail %></td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- V. INFORMASI LAIN -->
+    <div class="section-title mt-4">V. INFORMASI LAIN</div>
+    <div class="sub-field"><div class="sub-label">a. Titik Lokasi</div><div class="sub-value">: <%= titik_lokasi %></div></div>
+    <div class="sub-field"><div class="sub-label">b. Estimasi Penanganan</div><div class="sub-value">: <%= rencana_penanganan %></div></div>
+    <div class="sub-field"><div class="sub-label">c. Sumber Informasi</div><div class="sub-value">: <%= sumber_informasi %></div></div>
+
+    <!-- VI. KESIMPULAN DAN REKOMENDASI -->
+    <div class="section-title mt-4">VI. KESIMPULAN DAN REKOMENDASI</div>
+    <div class="sub-field"><div class="sub-label">Penetapan Status</div><div class="sub-value">: <%= rekomendasi_status %></div></div>
+    <div class="sub-field"><div class="sub-label">Perkiraan Lama</div><div class="sub-value">: <%= perkiraan_hari %> Hari</div></div>
+    <div class="mb-2 mt-2"><strong>Alasan / Dasar Rekomendasi:</strong><br><div style="padding-left:15px"><%= alasan_rekomendasi %></div></div>
+
+    <div class="mt-4 font-bold">Kesimpulan Kebutuhan Sektor</div>
+    <table>
+        <thead>
+            <tr><th>Sektor</th><th>Kebutuhan Tindakan dan Sumber Daya</th></tr>
+        </thead>
+        <tbody>
+            <% sektor_list.forEach(function(s) { %>
+            <tr>
+                <td><%= s.sektor %></td>
+                <td><%= s.kebutuhan %></td>
+            </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <!-- SIGNATURES -->
+    <div class="mt-4" style="page-break-inside: avoid;">
+        <table style="border: none;">
+            <tr style="border: none;">
+                <td style="border: none; text-align: center;">
+                    <br><br>
+                    <strong>Mengetahui,</strong><br>
+                    Pejabat Berwenang
+                    <br><br><br><br><br>
+                    (.........................................)
+                </td>
+                <td style="border: none; text-align: center;">
+                    <%= kabupaten %>, <%= waktu_kejadian %><br><br>
+                    <strong>Ketua Tim Kaji Cepat,</strong>
+                    <br><br><br><br><br>
+                    (.........................................)
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+</html>

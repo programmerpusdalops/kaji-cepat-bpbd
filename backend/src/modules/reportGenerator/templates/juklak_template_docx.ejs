@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div style="font-size: 16pt; font-weight: bold; text-align: center;">
+        BADAN PENANGGULANGAN BENCANA DAERAH
+    </div>
+    <div style="font-size: 14pt; text-align: center;">
+        <%= provinsi %>
+    </div>
+    <p style="text-align: center;">&nbsp;</p>
+    <h1 style="text-align: center; font-size: 14pt; text-decoration: underline;">LAPORAN KAJI CEPAT BENCANA</h1>
+    <p style="text-align: center; font-weight: bold;">Nomor: <%= report_code %></p>
+
+    <p><strong>I. PENDAHULUAN</strong></p>
+    <p>a. Jenis Kejadian: <%= jenis_kejadian %></p>
+    <p>b. Waktu Kejadian: <%= waktu_kejadian %></p>
+    <p>c. Lokasi Kejadian: <%= lokasi_kejadian %></p>
+    <p>d. Lama Waktu: <%= lama_waktu %></p>
+    <p>e. Kronologis Kejadian:</p>
+    <p><%= kronologis %></p>
+
+    <p><strong>II. ANALISIS SITUASI DAMPAK</strong></p>
+    <p>a. Cakupan Wilayah Terdampak:</p>
+    <p><%= cakupan_wilayah %></p>
+
+    <p><strong>b. Cakupan Penduduk Terdampak</strong></p>
+    <p>Total: <%= pt_total %> Jiwa (Laki-laki: <%= pt_laki %>, Perempuan: <%= pt_perempuan %>)</p>
+    <table style="border-collapse: collapse;">
+        <tr>
+            <th colspan="2" style="background-color: #f2f2f2; font-weight: bold;">Kelompok Rentan</th>
+            <th colspan="2" style="background-color: #f2f2f2; font-weight: bold;">Kelompok Khusus</th>
+        </tr>
+        <tr>
+            <td>Bayi (0-11 bln): <%= pt_kr_bayi %></td>
+            <td>Ibu Hamil: <%= pt_kr_ibu_hamil %></td>
+            <td>ODGJ: <%= pt_kk_odgj %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Balita (12-59 bln): <%= pt_kr_balita %></td>
+            <td>Ibu Menyusui: <%= pt_kr_ibu_menyusui %></td>
+            <td>Wanita Usia Subur: <%= pt_kk_wanita_usia_subur %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Anak-anak (5-17 thn): <%= pt_kr_anak %></td>
+            <td>Disabilitas: <%= pt_kr_disabilitas %></td>
+            <td><strong>Total Khusus:</strong> <%= pt_kk_total %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Lansia (>= 60 thn): <%= pt_kr_lansia %></td>
+            <td>Orang Sakit: <%= pt_kr_orang_sakit %></td>
+            <td colspan="2"></td>
+        </tr>
+        <tr>
+            <td><strong>Total Rentan:</strong></td>
+            <td><strong><%= pt_kr_total %></strong></td>
+            <td colspan="2"></td>
+        </tr>
+    </table>
+
+    <p><strong>c. Informasi Korban Jiwa / Luka / Terdampak</strong></p>
+    <p>Meninggal: <%= korban_meninggal %> Jiwa</p>
+    <p>Luka-luka: <%= korban_luka %> Jiwa</p>
+    <p>Sakit: <%= korban_sakit %> Jiwa</p>
+    <p>Hilang: <%= korban_hilang %> Jiwa</p>
+    <p>Mortalitas: <%= korban_mortalitas %></p>
+    
+    <p><strong>d. Informasi Penduduk Mengungsi</strong></p>
+    <p>Total: <%= pg_total %> Jiwa (<%= pg_jumlah_kk %> KK) (Laki-laki: <%= pg_laki %>, Perempuan: <%= pg_perempuan %>)</p>
+    <table style="border-collapse: collapse;">
+        <tr>
+            <th colspan="2" style="background-color: #f2f2f2; font-weight: bold;">Kelompok Rentan (Mengungsi)</th>
+            <th colspan="2" style="background-color: #f2f2f2; font-weight: bold;">Kelompok Khusus (Mengungsi)</th>
+        </tr>
+        <tr>
+            <td>Bayi (0-11 bln): <%= pg_kr_bayi %></td>
+            <td>Ibu Hamil: <%= pg_kr_ibu_hamil %></td>
+            <td>ODGJ: <%= pg_kk_odgj %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Balita (12-59 bln): <%= pg_kr_balita %></td>
+            <td>Ibu Menyusui: <%= pg_kr_ibu_menyusui %></td>
+            <td>Wanita Usia Subur: <%= pg_kk_wanita_usia_subur %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Anak-anak (5-17 thn): <%= pg_kr_anak %></td>
+            <td>Disabilitas: <%= pg_kr_disabilitas %></td>
+            <td><strong>Total Khusus:</strong> <%= pg_kk_total %></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Lansia (>= 60 thn): <%= pg_kr_lansia %></td>
+            <td>Orang Sakit: <%= pg_kr_orang_sakit %></td>
+            <td colspan="2"></td>
+        </tr>
+        <tr>
+            <td><strong>Total Rentan:</strong></td>
+            <td><strong><%= pg_kr_total %></strong></td>
+            <td colspan="2"></td>
+        </tr>
+    </table>
+
+    <p><strong>e. Informasi Kerusakan</strong></p>
+    <p>- Rumah Terdampak: <%= rumah_terdampak %> unit</p>
+    <p>- Rumah Tidak Layak: <%= rumah_tidak_layak %> unit</p>
+    <p>- Jalan: <%= kerusakan_jalan %></p>
+    <p>- Jembatan: <%= kerusakan_jembatan %></p>
+    <p>- Lahan: <%= kerusakan_lahan %></p>
+    <p>- Listrik: <%= kerusakan_listrik %></p>
+    <p>- Telekomunikasi: <%= kerusakan_telekomunikasi %></p>
+    <p>- Air Bersih: <%= kerusakan_air_bersih %></p>
+    <p>- Lainnya: <%= kerusakan_lainnya %></p>
+
+    <p><strong>III. INFORMASI UPAYA PENANGANAN DARURAT</strong></p>
+    <p>a. Upaya Penyelamatan dan Evakuasi:</p>
+    <p><%= upaya_evakuasi %></p>
+    <p>b. Upaya Pemenuhan Kebutuhan:</p>
+    <p><%= upaya_kebutuhan %></p>
+    <p>c. Pemulihan Sarana dan Prasarana:</p>
+    <p><%= upaya_pemulihan %></p>
+
+    <p><strong>IV. INFORMASI KEBUTUHAN TINDAKAN</strong></p>
+    <table style="border-collapse: collapse;">
+        <tr>
+            <th style="background-color: #f2f2f2; font-weight: bold;">No</th>
+            <th style="background-color: #f2f2f2; font-weight: bold;">Kegiatan</th>
+            <th style="background-color: #f2f2f2; font-weight: bold;">Detail</th>
+        </tr>
+        <% kebutuhan_list.forEach(function(k) { %>
+        <tr>
+            <td style="text-align: center;"><%= k.no %></td>
+            <td><%= k.kegiatan %></td>
+            <td><%= k.detail %></td>
+        </tr>
+        <% }); %>
+    </table>
+
+    <p><strong>V. INFORMASI LAIN</strong></p>
+    <p>a. Titik Lokasi: <%= titik_lokasi %></p>
+    <p>b. Estimasi Penanganan: <%= rencana_penanganan %></p>
+    <p>c. Sumber Informasi: <%= sumber_informasi %></p>
+
+    <p><strong>VI. KESIMPULAN DAN REKOMENDASI</strong></p>
+    <p>Penetapan Status: <%= rekomendasi_status %></p>
+    <p>Perkiraan Lama: <%= perkiraan_hari %> Hari</p>
+    <p>Alasan / Dasar Rekomendasi:</p>
+    <p><%= alasan_rekomendasi %></p>
+
+    <p><strong>Kesimpulan Kebutuhan Sektor</strong></p>
+    <table style="border-collapse: collapse;">
+        <tr>
+            <th style="background-color: #f2f2f2; font-weight: bold;">Sektor</th>
+            <th style="background-color: #f2f2f2; font-weight: bold;">Kebutuhan Tindakan dan Sumber Daya</th>
+        </tr>
+        <% sektor_list.forEach(function(s) { %>
+        <tr>
+            <td><%= s.sektor %></td>
+            <td><%= s.kebutuhan %></td>
+        </tr>
+        <% }); %>
+    </table>
+
+    <br/><br/><br/>
+    <table style="border: none;">
+        <tr>
+            <td style="text-align: center; border: none;">
+                <strong>Mengetahui,</strong><br/>
+                Pejabat Berwenang
+                <br/><br/><br/><br/>
+                (.........................................)
+            </td>
+            <td style="text-align: center; border: none;">
+                <%= kabupaten %>, <%= waktu_kejadian %><br/>
+                <strong>Ketua Tim Kaji Cepat,</strong>
+                <br/><br/><br/><br/>
+                (.........................................)
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

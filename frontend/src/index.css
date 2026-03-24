@@ -1,10 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @import "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 
-@layer base {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;@layer base {
   :root {
     --background: 220 20% 96%;
     --foreground: 220 30% 12%;

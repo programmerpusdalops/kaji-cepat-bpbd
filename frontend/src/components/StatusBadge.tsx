@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { bg: string; text: string; label?: string }> = {
-  NEW: { bg: "bg-status-new/15", text: "text-status-new" },
+  PENDING: { bg: "bg-status-new/15", text: "text-status-new", label: "Baru" },
+  NEW: { bg: "bg-status-new/15", text: "text-status-new", label: "Baru" },
   VERIFIED: { bg: "bg-status-verified/15", text: "text-status-verified", label: "Terverifikasi" },
   REJECTED: { bg: "bg-status-rejected/15", text: "text-status-rejected", label: "Ditolak" },
   MONITORING: { bg: "bg-status-monitoring/15", text: "text-status-monitoring" },

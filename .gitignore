@@ -25,3 +25,7 @@ Thumbs.db
 # Database
 *.sqlite
 *.db
+
+.agents/
+format_pdf.pdf
+format_w.docx

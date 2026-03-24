@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/context/AuthContext";
@@ -24,11 +25,15 @@ export function AppLayout() {
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
               </button>
-              <div className="hidden sm:flex items-center gap-2">
+              <Link
+                to="/profile"
+                className="hidden sm:flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title="Profil Saya"
+              >
                 <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
                   {user?.name?.charAt(0) || "U"}
                 </div>
-              </div>
+              </Link>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6">
