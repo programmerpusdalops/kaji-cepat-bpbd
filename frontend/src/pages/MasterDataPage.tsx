@@ -112,6 +112,20 @@ export default function MasterDataPage() {
   }, [regions, searchRg]);
   const filteredNI = useMemo(() => needItems.filter(n => n.name.toLowerCase().includes(searchNI.toLowerCase()) || (n.unit || "").toLowerCase().includes(searchNI.toLowerCase())), [needItems, searchNI]);
 
+  const groupedRegions = useMemo(() => {
+    const groups: Record<string, Record<string, Record<string, Region[]>>> = {};
+    filteredRg.forEach(r => {
+      const p = r.province || "Tanpa Provinsi";
+      const reg = r.regency || "Tanpa Kabupaten/Kota";
+      const d = r.district || "Tanpa Kecamatan";
+      if (!groups[p]) groups[p] = {};
+      if (!groups[p][reg]) groups[p][reg] = {};
+      if (!groups[p][reg][d]) groups[p][reg][d] = [];
+      groups[p][reg][d].push(r);
+    });
+    return groups;
+  }, [filteredRg]);
+
   const stats = useMemo(() => ({
     totalDT: disasterTypes.length, totalAg: agencies.length,
     totalRg: regions.length, totalNI: needItems.length,
@@ -178,15 +192,49 @@ export default function MasterDataPage() {
           </div>
         </TabsContent>
 
-        {/* ═══ Tab: Wilayah ═══ */}
+        {/* ═══ Tab: Wilayah (EMSIFA) ═══ */}
         <TabsContent value="regions" className="mt-4 space-y-4">
-          <SearchBar value={searchRg} onChange={setSearchRg} placeholder="Cari wilayah..." onAdd={() => { setRgForm({ province: "", regency: "", district: "", village: "" }); rg.setCreateOpen(true); }} />
-          <div className="stat-card overflow-x-auto">
-            <table className="w-full text-sm"><thead><tr className="border-b"><th className="p-3 text-left text-muted-foreground font-medium w-16">No</th><th className="p-3 text-left text-muted-foreground font-medium">Provinsi</th><th className="p-3 text-left text-muted-foreground font-medium hidden sm:table-cell">Kab/Kota</th><th className="p-3 text-left text-muted-foreground font-medium hidden md:table-cell">Kecamatan</th><th className="p-3 text-left text-muted-foreground font-medium hidden lg:table-cell">Desa/Kel</th><th className="p-3 text-right text-muted-foreground font-medium w-24">Aksi</th></tr></thead>
-              <tbody>{loading ? <LoadingRow cols={6} /> : filteredRg.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Tidak ada data</td></tr> : filteredRg.map((r, i) => (
-                <tr key={r.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors"><td className="p-3 text-muted-foreground">{i + 1}</td><td className="p-3 font-medium">{r.province}</td><td className="p-3 hidden sm:table-cell">{r.regency || "—"}</td><td className="p-3 hidden md:table-cell">{r.district || "—"}</td><td className="p-3 hidden lg:table-cell">{r.village || "—"}</td><td className="p-3 text-right"><ActionBtns onEdit={() => { rg.setSelected(r); setRgForm({ province: r.province, regency: r.regency || "", district: r.district || "", village: r.village || "" }); rg.setEditOpen(true); }} onDelete={() => { rg.setSelected(r); rg.setDeleteOpen(true); }} /></td></tr>
-              ))}</tbody></table>
-            {!loading && filteredRg.length > 0 && <div className="border-t px-3 py-2 text-xs text-muted-foreground">Menampilkan {filteredRg.length} dari {regions.length} wilayah</div>}
+          <div className="stat-card">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 pb-4 border-b">
+              <div>
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Database className="h-5 w-5 text-emerald-600" /> Data EMSIFA Wilayah</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Data ini tersinkronisasi langsung dengan API Nasional. Jika kosong, mohon tekan sinkronisasi.
+                </p>
+              </div>
+              <Button 
+                onClick={async () => {
+                  if (window.confirm("Proses ini akan mengambil ribuan data desa se-Sulawesi Tengah dan membutuhkan waktu. Lanjutkan?")) {
+                    setLoading(true);
+                    try {
+                      const apiService = await import("@/services/apiService");
+                      await apiService.syncAllEmsifaSulteng();
+                      toast.success("Singkronisasi Selesai!");
+                    } catch (e: any) {
+                      toast.error("Gagal sinkronisasi EMSIFA: " + e.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }} 
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                Sync Wilayah Sulteng
+              </Button>
+            </div>
+            
+            <div className="rounded-lg bg-orange-500/10 p-5 border border-orange-500/20 text-orange-800 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+              <div className="text-sm space-y-2">
+                <p className="font-semibold">Informasi Hierarki Data Bawaan EMSIFA</p>
+                <p>
+                  Untuk meringankan waktu muat <i>(loading)</i> halaman Master Data, struktur data provinsi, kabupaten, hingga <b>ribuan desa</b> tidak ditampilkan secara penuh di halaman ini. Namun jangan khawatir, seluruh hierarki data tersebut dapat langsung diakses & bertingkat secara dinamis melalui <b>Form Pembuatan Laporan Kaji Cepat</b>.
+                </p>
+              </div>
+            </div>
+            
           </div>
         </TabsContent>
 

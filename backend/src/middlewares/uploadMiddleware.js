@@ -42,4 +42,24 @@ const uploadMapPhoto = multer({
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
 });
 
-module.exports = { uploadMapPhoto };
+const assessmentUploadDir = path.join(__dirname, '..', '..', 'uploads', 'assessments');
+if (!fs.existsSync(assessmentUploadDir)) {
+    fs.mkdirSync(assessmentUploadDir, { recursive: true });
+}
+
+const assessmentStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, assessmentUploadDir),
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `assessment-${uniqueSuffix}${ext}`);
+    },
+});
+
+const uploadAssessmentPhoto = multer({
+    storage: assessmentStorage,
+    fileFilter,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+module.exports = { uploadMapPhoto, uploadAssessmentPhoto };

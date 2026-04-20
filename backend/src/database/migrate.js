@@ -16,6 +16,10 @@ const migrations = [
     require('./migrations/007_create_rapid_assessment_tables'),
     require('./migrations/008_migrate_to_rapid_assessments'),
     require('./migrations/009_field_assessment_juklak'),
+    require('./migrations/010_add_surat_tugas_columns'),
+    require('./migrations/011_add_update_type_to_rapid_assessments'),
+    require('./migrations/012_create_emsifa_regions'),
+    require('./migrations/013_add_photos_to_rapid_assessments'),
 ];
 
 (async () => {

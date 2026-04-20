@@ -1,5 +1,5 @@
 const repo = require('./rapidAssessmentRepository');
-const { generateWhatsAppMessage } = require('./waMessageGenerator');
+const { generateWhatsAppMessage, generateMapSlug } = require('./waMessageGenerator');
 const fonnteService = require('./fonnteService');
 const logger = require('../../utils/logger');
 
@@ -32,8 +32,16 @@ const createAssessment = async (data, userId) => {
         created_by: userId,
     });
 
-    // Fetch full data to generate WA message
+    // Fetch full data to generate WA message & map link
     const fullData = await repo.findById(assessment.id);
+    
+    // Auto-generate peta_link
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const slug = generateMapSlug(fullData);
+    const petaLink = `${FRONTEND_URL}/public-map/${fullData.id}/${slug}`;
+    await repo.updatePetaLink(fullData.id, petaLink);
+    fullData.peta_link = petaLink; // update instance for WA message
+
     const waMessage = generateWhatsAppMessage(fullData);
 
     // Cache the WA message
@@ -53,7 +61,20 @@ const updateAssessment = async (id, data) => {
         throw error;
     }
 
+    if (data.update_type === 'UPDATE') {
+        data.last_update_time = new Date();
+    } else if (data.update_type === 'KOREKSI') {
+        data.last_update_time = existing.last_update_time;
+    }
+
     const updated = await repo.update(id, data);
+
+    // Auto-generate peta_link again (in case regency/district/disaster_type changed)
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const slug = generateMapSlug(updated);
+    const petaLink = `${FRONTEND_URL}/public-map/${updated.id}/${slug}`;
+    await repo.updatePetaLink(updated.id, petaLink);
+    updated.peta_link = petaLink; // update instance for WA message
 
     // Regenerate WA message
     const waMessage = generateWhatsAppMessage(updated);
@@ -161,6 +182,17 @@ const getWaSendLogs = async (id) => {
     return await repo.findWaSendLogs(id);
 };
 
+const updateStatus = async (id, status) => {
+    const assessment = await repo.findById(id);
+    if (!assessment) {
+        const error = new Error('Data kaji cepat tidak ditemukan.');
+        error.statusCode = 404;
+        throw error;
+    }
+    await repo.updateStatus(id, status);
+    return { id, status };
+};
+
 module.exports = {
     getAllAssessments,
     getDropdownList,
@@ -172,4 +204,5 @@ module.exports = {
     sendWhatsApp,
     resendWhatsApp,
     getWaSendLogs,
+    updateStatus,
 };

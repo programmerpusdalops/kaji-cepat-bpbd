@@ -2,7 +2,7 @@ const { query, getClient } = require('../../config/database');
 
 /**
  * Team Assignment Repository
- * Updated: Now uses assessment_id (rapid_assessments) instead of report_id (disaster_reports)
+ * Full CRUD with Surat Tugas (ST) fields integrated.
  */
 
 const findAll = async (filters = {}) => {
@@ -48,18 +48,67 @@ const findById = async (id) => {
     return result.rows[0] || null;
 };
 
-const create = async (assignmentData, client) => {
+const create = async (data, client) => {
     const dbQuery = client ? client.query.bind(client) : query;
 
-    const { assessment_id, team_name, leader, total_members, vehicle, departure_time, arrival_estimate } = assignmentData;
+    const {
+        assessment_id, team_name, leader, total_members, vehicle,
+        departure_time, arrival_estimate,
+        nomor_surat, tanggal_surat, bulan_surat, tahun_surat, desa, nama_aparat_desa,
+    } = data;
+
     const result = await dbQuery(`
     INSERT INTO team_assignments 
-      (assessment_id, team_name, leader, total_members, vehicle, departure_time, arrival_estimate)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (assessment_id, team_name, leader, total_members, vehicle, departure_time, arrival_estimate,
+       nomor_surat, tanggal_surat, bulan_surat, tahun_surat, desa, nama_aparat_desa)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *
-  `, [assessment_id, team_name, leader, total_members, vehicle || null, departure_time || null, arrival_estimate || null]);
+  `, [
+        assessment_id, team_name, leader, total_members,
+        vehicle || null, departure_time || null, arrival_estimate || null,
+        nomor_surat || null, tanggal_surat || null, bulan_surat || null,
+        tahun_surat || null, desa || null, nama_aparat_desa || null,
+    ]);
 
     return result.rows[0];
+};
+
+const update = async (id, data, client) => {
+    const dbQuery = client ? client.query.bind(client) : query;
+
+    const {
+        assessment_id, team_name, leader, total_members, vehicle,
+        departure_time, arrival_estimate,
+        nomor_surat, tanggal_surat, bulan_surat, tahun_surat, desa, nama_aparat_desa,
+    } = data;
+
+    const result = await dbQuery(`
+    UPDATE team_assignments SET
+      assessment_id = $1, team_name = $2, leader = $3, total_members = $4,
+      vehicle = $5, departure_time = $6, arrival_estimate = $7,
+      nomor_surat = $8, tanggal_surat = $9, bulan_surat = $10,
+      tahun_surat = $11, desa = $12, nama_aparat_desa = $13
+    WHERE id = $14
+    RETURNING *
+  `, [
+        assessment_id, team_name, leader, total_members,
+        vehicle || null, departure_time || null, arrival_estimate || null,
+        nomor_surat || null, tanggal_surat || null, bulan_surat || null,
+        tahun_surat || null, desa || null, nama_aparat_desa || null,
+        id,
+    ]);
+
+    return result.rows[0] || null;
+};
+
+const deleteById = async (id) => {
+    const result = await query('DELETE FROM team_assignments WHERE id = $1 RETURNING id', [id]);
+    return result.rowCount > 0;
+};
+
+const deleteMembers = async (assignmentId, client) => {
+    const dbQuery = client ? client.query.bind(client) : query;
+    await dbQuery('DELETE FROM team_members WHERE assignment_id = $1', [assignmentId]);
 };
 
 const createMembers = async (assignmentId, members, client) => {
@@ -85,6 +134,9 @@ module.exports = {
     findAll,
     findById,
     create,
+    update,
+    deleteById,
+    deleteMembers,
     createMembers,
     findMembersByAssignmentId,
 };

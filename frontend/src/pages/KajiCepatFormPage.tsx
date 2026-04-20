@@ -1,15 +1,17 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   createRapidAssessment, updateRapidAssessment, getRapidAssessmentById,
-  getDisasterTypes, getRegions, getNeedItems, generateWAMessage,
+  getDisasterTypes, getNeedItems, generateWAMessage,
+  getEmsifaProvinces, getEmsifaRegencies, getEmsifaDistricts, getEmsifaVillages,
+  uploadAssessmentPhotos
 } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, ArrowRight, Check, Loader2, Copy, Send, Plus, Trash2, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Copy, Send, Plus, Trash2, Wand2, ImagePlus, X, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 // ──────────────── Types ────────────────
@@ -23,6 +25,7 @@ interface VillageData {
 }
 
 interface FormData {
+  update_type?: "KOREKSI" | "UPDATE";
   disaster_type_id: string;
   province: string;
   regency: string;
@@ -40,6 +43,7 @@ interface FormData {
   situations: string[];
   sources: string[];
   peta_link: string;
+  photos: string[];
   recipients: { nomor: number; nama: string; is_default: boolean }[];
 }
 
@@ -51,6 +55,7 @@ const STEP_LABELS = [
   "Kronologis",
   "Data Dampak",
   "Tindakan",
+  "Dokumentasi",
   "Sumber & Kirim",
 ];
 
@@ -92,6 +97,7 @@ const emptyVillageData = (village: string): VillageData => ({
 });
 
 const initialForm: FormData = {
+  update_type: "KOREKSI",
   disaster_type_id: "",
   province: "Sulawesi Tengah",
   regency: "",
@@ -109,6 +115,7 @@ const initialForm: FormData = {
   situations: [""],
   sources: [...DEFAULT_SOURCES],
   peta_link: "",
+  photos: [],
   recipients: [...DEFAULT_RECIPIENTS],
 };
 
@@ -123,23 +130,60 @@ export default function KajiCepatFormPage() {
   const [form, setForm] = useState<FormData>({ ...initialForm });
   const [saving, setSaving] = useState(false);
   const [disasterTypes, setDisasterTypes] = useState<any[]>([]);
-  const [regions, setRegions] = useState<any[]>([]);
   const [needItems, setNeedItems] = useState<any[]>([]);
+
+  // EMSIFA Data
+  const [emsifaProvinces, setEmsifaProvinces] = useState<any[]>([]);
+  const [emsifaRegencies, setEmsifaRegencies] = useState<any[]>([]);
+  const [emsifaDistricts, setEmsifaDistricts] = useState<any[]>([]);
+  const [emsifaVillages, setEmsifaVillages] = useState<any[]>([]);
+
   const [waPreview, setWaPreview] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load master data
   useEffect(() => {
     getDisasterTypes().then(setDisasterTypes).catch(() => {});
-    getRegions().then(setRegions).catch(() => {});
     getNeedItems().then(setNeedItems).catch(() => {});
+
+    // EMSIFA initialization
+    getEmsifaProvinces().then(data => {
+      setEmsifaProvinces(data);
+      const sulteng = data.find((p: any) => p.name && p.name.includes("SULAWESI TENGAH"));
+      if (sulteng) {
+        getEmsifaRegencies(sulteng.id).then(setEmsifaRegencies).catch(() => {});
+      }
+    }).catch(() => {});
   }, []);
+
+  // Cascading EMSIFA Data Loads
+  useEffect(() => {
+    if (form.regency) {
+      const reg = emsifaRegencies.find(r => r.name === form.regency);
+      if (reg) getEmsifaDistricts(reg.id).then(setEmsifaDistricts).catch(() => {});
+    } else {
+      setEmsifaDistricts([]);
+    }
+  }, [form.regency, emsifaRegencies]);
+
+  useEffect(() => {
+    if (form.district) {
+      const dist = emsifaDistricts.find(d => d.name === form.district);
+      if (dist) getEmsifaVillages(dist.id).then(setEmsifaVillages).catch(() => {});
+    } else {
+      setEmsifaVillages([]);
+    }
+  }, [form.district, emsifaDistricts]);
 
   // Load existing data if editing
   useEffect(() => {
     if (!id) return;
     getRapidAssessmentById(Number(id)).then(data => {
       setForm({
+        update_type: "KOREKSI",
         disaster_type_id: String(data.disaster_type_id),
         province: data.province || "Sulawesi Tengah",
         regency: data.regency || "",
@@ -175,6 +219,7 @@ export default function KajiCepatFormPage() {
         situations: data.situations?.map((s: any) => s.situasi) || [""],
         sources: data.sources?.map((s: any) => s.sumber) || [...DEFAULT_SOURCES],
         peta_link: data.peta_link || "",
+        photos: data.photos?.map((p: any) => p.photo_url) || [],
         recipients: data.recipients?.length > 0
           ? data.recipients.map((r: any) => ({ nomor: r.nomor, nama: r.nama, is_default: r.is_default }))
           : [...DEFAULT_RECIPIENTS],
@@ -209,10 +254,10 @@ export default function KajiCepatFormPage() {
     .replace(/\{kabupaten\}/g, kabupaten)
     .replace(/\{kecamatan\}/g, form.district);
 
-  // Derived data: unique kabupaten from regions
-  const uniqueRegencies = [...new Set(regions.filter((r: any) => r.regency).map((r: any) => r.regency))].sort();
-  const uniqueDistricts = [...new Set(regions.filter((r: any) => r.regency === form.regency && r.district).map((r: any) => r.district))].sort();
-  const uniqueVillages = [...new Set(regions.filter((r: any) => r.district === form.district && r.village).map((r: any) => r.village))].sort();
+  // Derived data for EMSIFA
+  const uniqueRegencies = emsifaRegencies.map(r => r.name);
+  const uniqueDistricts = emsifaDistricts.map(d => d.name);
+  const uniqueVillages = emsifaVillages.map(v => v.name);
 
   // ──────────────── Submit ────────────────
   const handleSubmit = async () => {
@@ -225,6 +270,7 @@ export default function KajiCepatFormPage() {
     const validVillages = form.villages.filter(v => v.trim());
 
     const payload = {
+      update_type: form.update_type || "KOREKSI",
       disaster_type_id: Number(form.disaster_type_id),
       province: form.province,
       regency: form.regency,
@@ -243,7 +289,7 @@ export default function KajiCepatFormPage() {
       ],
       situations: form.situations.filter(s => s.trim()),
       sources: form.sources.filter(s => s.trim()).map(s => replaceVars(s)),
-      peta_link: form.peta_link,
+      photos: form.photos,
       recipients: form.recipients,
     };
 
@@ -337,8 +383,8 @@ export default function KajiCepatFormPage() {
                     <Input type="number" min={0} value={data.jumlah_jiwa} onChange={e => updateData("jumlah_jiwa", Number(e.target.value))} className="h-8 text-sm" />
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-xs">Keterangan (opsional)</Label>
-                    <Input value={data.keterangan} onChange={e => updateData("keterangan", e.target.value)} placeholder="Keterangan tambahan" className="h-8 text-sm" />
+                    <Label className="text-xs">Uraian / Kerusakan Lainnya</Label>
+                    <textarea value={data.keterangan} onChange={e => updateData("keterangan", e.target.value)} placeholder="Contoh: 4 Rumah, 1 Jembatan Trans Sulawesi, dll (pisahkan dengan baris baru)" className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
                   </div>
                 </div>
               )}
@@ -358,7 +404,7 @@ export default function KajiCepatFormPage() {
         return (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Jenis Bencana *</Label>
+              <Label>Jenis Bencana <span className="text-destructive">*</span></Label>
               <Select value={form.disaster_type_id} onValueChange={v => updateForm("disaster_type_id", v)}>
                 <SelectTrigger><SelectValue placeholder="Pilih jenis bencana..." /></SelectTrigger>
                 <SelectContent>
@@ -368,12 +414,12 @@ export default function KajiCepatFormPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Waktu Kejadian *</Label>
+                <Label>Waktu Kejadian <span className="text-destructive">*</span></Label>
                 <Input type="datetime-local" value={form.waktu_kejadian} onChange={e => updateForm("waktu_kejadian", e.target.value)} />
                 {form.waktu_kejadian && <p className="text-xs text-muted-foreground">Hari: {getHari(form.waktu_kejadian)}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Waktu Terima Laporan *</Label>
+                <Label>Waktu Terima Laporan <span className="text-destructive">*</span></Label>
                 <Input type="datetime-local" value={form.waktu_laporan} onChange={e => updateForm("waktu_laporan", e.target.value)} />
                 {form.waktu_laporan && <p className="text-xs text-muted-foreground">Hari: {getHari(form.waktu_laporan)}</p>}
               </div>
@@ -391,7 +437,7 @@ export default function KajiCepatFormPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Kabupaten *</Label>
+                <Label>Kabupaten <span className="text-destructive">*</span></Label>
                 {uniqueRegencies.length > 0 ? (
                   <Select value={form.regency} onValueChange={v => { updateForm("regency", v); updateForm("district", ""); updateForm("villages", [""]); }}>
                     <SelectTrigger><SelectValue placeholder="Pilih kabupaten..." /></SelectTrigger>
@@ -402,7 +448,7 @@ export default function KajiCepatFormPage() {
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>Kecamatan *</Label>
+                <Label>Kecamatan <span className="text-destructive">*</span></Label>
                 {uniqueDistricts.length > 0 ? (
                   <Select value={form.district} onValueChange={v => { updateForm("district", v); updateForm("villages", [""]); }}>
                     <SelectTrigger><SelectValue placeholder="Pilih kecamatan..." /></SelectTrigger>
@@ -414,7 +460,7 @@ export default function KajiCepatFormPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Desa * (bisa lebih dari 1)</Label>
+              <Label>Desa <span className="text-destructive">*</span> (bisa lebih dari 1)</Label>
               {form.villages.map((v, i) => (
                 <div key={i} className="flex gap-2">
                   {uniqueVillages.length > 0 ? (
@@ -571,8 +617,108 @@ export default function KajiCepatFormPage() {
           </div>
         );
 
-      // ── Step 5: Sumber & Kirim ──
-      case 5:
+      // ── Step 5: Dokumentasi ──
+      case 5: {
+        const handleFileSelect = async (files: FileList | null) => {
+          if (!files || files.length === 0) return;
+          const validFiles = Array.from(files).filter(f => {
+            if (f.size > 5 * 1024 * 1024) { toast.error(`${f.name} melebihi 5MB`); return false; }
+            if (![".jpg", ".jpeg", ".png"].some(ext => f.name.toLowerCase().endsWith(ext))) { toast.error(`${f.name} format tidak didukung`); return false; }
+            return true;
+          });
+          if (validFiles.length === 0) return;
+
+          setUploading(true);
+          try {
+            const urls = await uploadAssessmentPhotos(validFiles);
+            setPhotoFiles(prev => [...prev, ...validFiles]);
+            updateForm("photos", [...form.photos, ...urls]);
+            toast.success(`${urls.length} foto berhasil diunggah`);
+          } catch (err: any) {
+            toast.error(err.message || "Gagal mengunggah foto");
+          } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }
+        };
+
+        const removePhoto = (index: number) => {
+          updateForm("photos", form.photos.filter((_, i) => i !== index));
+          setPhotoFiles(prev => prev.filter((_, i) => i !== index));
+        };
+
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Unggah foto dokumentasi kejadian bencana. Maksimal 5 foto, masing-masing maksimal 5MB (JPG/PNG).
+            </p>
+
+            {/* Upload Area */}
+            <div
+              className="border-2 border-dashed rounded-xl p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("border-primary", "bg-primary/5"); }}
+              onDragLeave={e => { e.preventDefault(); e.currentTarget.classList.remove("border-primary", "bg-primary/5"); }}
+              onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove("border-primary", "bg-primary/5"); handleFileSelect(e.dataTransfer.files); }}
+            >
+              {uploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Mengunggah foto...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <ImagePlus className="h-10 w-10 text-muted-foreground/50" />
+                  <p className="text-sm font-medium">Klik atau seret foto ke sini</p>
+                  <p className="text-xs text-muted-foreground">JPG, JPEG, PNG — Maks. 5MB per file</p>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".jpg,.jpeg,.png"
+                className="hidden"
+                onChange={e => handleFileSelect(e.target.files)}
+                disabled={uploading}
+              />
+            </div>
+
+            {/* Thumbnails Grid */}
+            {form.photos.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {form.photos.map((url, i) => (
+                  <div key={i} className="relative group rounded-lg overflow-hidden border bg-muted/30 aspect-[4/3]">
+                    <img
+                      src={url}
+                      alt={`Foto ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='%23f3f4f6' width='100' height='100'/><text x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='12'>Foto</text></svg>"; }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1.5 right-1.5 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-destructive/90"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs px-2 py-1 truncate">
+                      Foto {i + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {form.photos.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center">{form.photos.length} foto terlampir</p>
+            )}
+          </div>
+        );
+      }
+
+      // ── Step 6: Sumber & Kirim ──
+      case 6:
         return (
           <div className="space-y-6">
             {/* Sumber */}
@@ -600,8 +746,23 @@ export default function KajiCepatFormPage() {
 
             {/* Peta */}
             <div className="space-y-1.5">
-              <Label>Link Peta Kolaboratif (opsional)</Label>
-              <Input value={form.peta_link} onChange={e => updateForm("peta_link", e.target.value)} placeholder="https://..." />
+              <Label>Link Peta Kolaboratif</Label>
+              {isEdit && form.peta_link ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50">
+                  <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-500 shrink-0" />
+                  <a href={form.peta_link} target="_blank" rel="noreferrer" 
+                     className="text-sm text-emerald-700 dark:text-emerald-400 underline truncate">
+                    {form.peta_link}
+                  </a>
+                  <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(form.peta_link); toast.success("Link disalin!"); }}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic p-3 rounded-lg bg-muted/50 border">
+                  Link peta kolaboratif akan otomatis di-generate setelah data disimpan.
+                </p>
+              )}
             </div>
 
             <hr />
@@ -609,19 +770,40 @@ export default function KajiCepatFormPage() {
             {/* Penerima WA */}
             <div className="space-y-2">
               <Label>Penerima WhatsApp</Label>
-              <div className="space-y-1 max-h-60 overflow-y-auto">
+              <div id="recipients-container" className="space-y-1 max-h-60 overflow-y-auto pr-1">
                 {form.recipients.map((r, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     <span className="w-6 text-muted-foreground text-right">{r.nomor}.</span>
                     {r.is_default ? (
                       <span className="flex-1">{r.nama}</span>
                     ) : (
-                      <Input className="flex-1 h-8 text-sm" value={r.nama} onChange={e => {
-                        const arr = [...form.recipients]; arr[i] = { ...arr[i], nama: e.target.value }; updateForm("recipients", arr);
-                      }} />
+                      <Select value={r.nama} onValueChange={(val) => {
+                        const arr = [...form.recipients];
+                        arr[i] = { ...arr[i], nama: val };
+                        updateForm("recipients", arr);
+                      }}>
+                        <SelectTrigger className="flex-1 h-8 text-sm">
+                          <SelectValue placeholder="Pilih penerima tambahan..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...new Set([
+                            "Kadis Perumahan, Kawasan Permukiman dan Pertanahan Prov. Sulteng",
+                            "Kadis Cipta Karya dan Sumber Daya Air Prov. Sulteng",
+                            "Kadis Bina Marga dan Penata Ruang Prov. Sulteng",
+                            "Kadis Pertambangan dan Energi Prov. Sulteng",
+                            r.nama
+                          ].filter(Boolean))].map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {!r.is_default && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateForm("recipients", form.recipients.filter((_, idx) => idx !== i))}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                        const filtered = form.recipients.filter((_, idx) => idx !== i);
+                        const reordered = filtered.map((rec, index) => ({ ...rec, nomor: index + 1 }));
+                        updateForm("recipients", reordered);
+                      }}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     )}
@@ -631,10 +813,33 @@ export default function KajiCepatFormPage() {
               <Button variant="outline" size="sm" onClick={() => {
                 const nextNomor = Math.max(...form.recipients.map(r => r.nomor), 0) + 1;
                 updateForm("recipients", [...form.recipients, { nomor: nextNomor, nama: "", is_default: false }]);
+                setTimeout(() => {
+                  const el = document.getElementById("recipients-container");
+                  if (el) el.scrollTop = el.scrollHeight;
+                }, 100);
               }} className="gap-1">
                 <Plus className="h-3 w-3" /> Tambah Penerima
               </Button>
             </div>
+
+            {/* Tujuan Edit (Update Type) */}
+            {isEdit && (
+              <div className="mt-6 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 space-y-3">
+                <Label className="text-amber-800 dark:text-amber-500 font-semibold">Tujuan Edit Laporan</Label>
+                <Select value={form.update_type || "KOREKSI"} onValueChange={v => updateForm("update_type", v)}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KOREKSI">Hanya Perbaikan Data / Koreksi Kesalahan</SelectItem>
+                    <SelectItem value="UPDATE">Update Informasi Terbaru dari Lapangan</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-amber-700/80 dark:text-amber-500/80">
+                  Memilih <b>Update Informasi</b> akan menyertakan label "Update" dan memperbarui waktu laporan pada hasil generate teks WhatsApp.
+                </p>
+              </div>
+            )}
 
             {/* WA Preview */}
             {isEdit && waPreview && (
@@ -648,6 +853,24 @@ export default function KajiCepatFormPage() {
                     </Button>
                   </div>
                   <pre className="whitespace-pre-wrap text-xs bg-muted/50 p-3 rounded-lg max-h-60 overflow-auto font-sans">{waPreview}</pre>
+
+                  {form.photos.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <Label className="text-muted-foreground/80">Lampiran Dokumentasi ({form.photos.length})</Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {form.photos.map((url, i) => (
+                          <div key={i} className="relative rounded-md overflow-hidden border bg-muted/30 aspect-[4/3]">
+                            <img
+                              src={url}
+                              alt={`Foto ${i + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='%23f3f4f6' width='100' height='100'/><text x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='12'>Foto</text></svg>"; }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

@@ -151,6 +151,18 @@ const create = async (data) => {
             }
         }
 
+        // 11. Insert photos (dokumentasi)
+        if (data.photos && data.photos.length > 0) {
+            for (const photo of data.photos) {
+                const url = typeof photo === 'string' ? photo : photo.photo_url;
+                const desc = typeof photo === 'string' ? null : (photo.description || null);
+                await client.query(
+                    'INSERT INTO assessment_photos (assessment_id, photo_url, description) VALUES ($1, $2, $3)',
+                    [aId, url, desc]
+                );
+            }
+        }
+
         await client.query('COMMIT');
         return assessment;
     } catch (error) {
@@ -274,6 +286,12 @@ const findById = async (id) => {
     );
     assessment.recipients = recipientsResult.rows;
 
+    // Photos (dokumentasi)
+    const photosResult = await query(
+        'SELECT * FROM assessment_photos WHERE assessment_id = $1 ORDER BY created_at', [id]
+    );
+    assessment.photos = photosResult.rows;
+
     return assessment;
 };
 
@@ -292,7 +310,7 @@ const update = async (id, data) => {
         const updatableFields = [
             'disaster_type_id', 'province', 'regency', 'district',
             'waktu_kejadian', 'waktu_laporan', 'kronologis', 'peta_link',
-            'status', 'wa_message_cache', 'report_id'
+            'status', 'wa_message_cache', 'report_id', 'update_type', 'last_update_time'
         ];
 
         for (const field of updatableFields) {
@@ -316,7 +334,8 @@ const update = async (id, data) => {
         const childTables = [
             'assessment_villages', 'assessment_affected', 'assessment_refugees',
             'assessment_casualties', 'assessment_steps', 'assessment_needs',
-            'assessment_situations', 'assessment_sources', 'assessment_recipients'
+            'assessment_situations', 'assessment_sources', 'assessment_recipients',
+            'assessment_photos'
         ];
         for (const table of childTables) {
             await client.query(`DELETE FROM ${table} WHERE assessment_id = $1`, [id]);
@@ -423,6 +442,18 @@ const update = async (id, data) => {
             }
         }
 
+        // Re-insert photos (dokumentasi)
+        if (data.photos && data.photos.length > 0) {
+            for (const photo of data.photos) {
+                const url = typeof photo === 'string' ? photo : photo.photo_url;
+                const desc = typeof photo === 'string' ? null : (photo.description || null);
+                await client.query(
+                    'INSERT INTO assessment_photos (assessment_id, photo_url, description) VALUES ($1, $2, $3)',
+                    [id, url, desc]
+                );
+            }
+        }
+
         await client.query('COMMIT');
 
         // Return updated assessment
@@ -451,6 +482,16 @@ const updateStatus = async (id, status) => {
     const result = await query(
         'UPDATE rapid_assessments SET status = $1 WHERE id = $2 RETURNING id, status',
         [status, id]
+    );
+    return result.rows[0] || null;
+};
+
+// ──────────────── UPDATE PETA LINK ────────────────
+
+const updatePetaLink = async (id, petaLink) => {
+    const result = await query(
+        'UPDATE rapid_assessments SET peta_link = $1 WHERE id = $2 RETURNING id, peta_link',
+        [petaLink, id]
     );
     return result.rows[0] || null;
 };
@@ -489,6 +530,7 @@ module.exports = {
     update,
     updateWaCache,
     updateStatus,
+    updatePetaLink,
     deleteById,
     createWaSendLog,
     findWaSendLogs,

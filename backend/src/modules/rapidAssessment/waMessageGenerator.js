@@ -17,12 +17,34 @@ const formatDate = (dateStr) => {
     };
 };
 
+const getRegencyDisplay = (regency) => {
+    if (!regency) return '';
+    const clean = regency.replace(/^(Kabupaten|Kab\.|Kota)\s+/i, '').trim();
+    if (clean.toLowerCase() === 'palu') return `Kota ${clean}`;
+    return `Kab. ${clean}`;
+};
+
 const replaceVariables = (text, vars) => {
     let result = text;
     for (const [key, value] of Object.entries(vars)) {
-        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+        result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value);
     }
     return result;
+};
+
+// Generate slug for map link (e.g., banjir-kec-sirenja-kab-donggala)
+const generateMapSlug = (data) => {
+    const parts = [
+        data.disaster_type_name,
+        data.district ? `kec-${data.district}` : '',
+        data.regency ? `kab-${data.regency.replace(/^(Kabupaten|Kab\.|Kota)\s+/i, '').trim()}` : ''
+    ].filter(Boolean);
+    
+    return parts.join('-')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-') // replace non-alphanumeric with dash
+        .replace(/-+/g, '-')         // replace multiple dashes with single dash
+        .replace(/^-|-$/g, '');      // trim dashes
 };
 
 // ──────────────── Default Recipients ────────────────
@@ -63,23 +85,25 @@ const formatHeader = (recipients = []) => {
 
 const formatLokasiJudul = (data) => {
     const villages = data.villages || [];
+    const regencyDisplay = getRegencyDisplay(data.regency);
     if (villages.length === 1) {
-        return `Desa ${villages[0].village_name} Kec. ${data.district} Kab. ${data.regency}`;
+        return `Desa ${villages[0].village_name} Kec. ${data.district} ${regencyDisplay}`;
     }
-    return `Kec. ${data.district} Kab. ${data.regency}`;
+    return `Kec. ${data.district} ${regencyDisplay}`;
 };
 
 const formatLokasi = (data) => {
     const villages = data.villages || [];
+    const regencyDisplay = getRegencyDisplay(data.regency);
     if (villages.length === 0) {
-        return `Kec. ${data.district} Kab. ${data.regency} Prov. ${data.province}`;
+        return `Kec. ${data.district} ${regencyDisplay}`;
     }
 
     if (villages.length === 1) {
-        return `Desa ${villages[0].village_name} Kec. ${data.district} Kab. ${data.regency} Prov. ${data.province}`;
+        return `Desa ${villages[0].village_name} Kec. ${data.district} ${regencyDisplay}`;
     }
 
-    let text = `Kec. ${data.district} Kab. ${data.regency} Prov. ${data.province}\n`;
+    let text = `Kec. ${data.district} ${regencyDisplay}\n`;
     for (const v of villages) {
         text += `• Desa ${v.village_name}\n`;
     }
@@ -102,9 +126,17 @@ const formatDataPerDesa = (items, villages) => {
         if (item.status === 'PENDING') return 'Dalam Pendataan';
 
         let text = '';
-        if (item.jumlah_kk > 0) text += `• ${item.jumlah_kk} KK\n`;
-        if (item.jumlah_jiwa > 0) text += `• ${item.jumlah_jiwa} Jiwa\n`;
-        if (item.keterangan) text += `• ${item.keterangan}\n`;
+        const jiwakk = [];
+        if (item.jumlah_kk > 0) jiwakk.push(`${item.jumlah_kk} KK`);
+        if (item.jumlah_jiwa > 0) jiwakk.push(`${item.jumlah_jiwa} Jiwa`);
+        if (jiwakk.length > 0) text += `• ${jiwakk.join(' / ')}\n`;
+
+        if (item.keterangan) {
+            const ketLines = item.keterangan.split('\n').filter(l => l.trim() !== '');
+            for (const line of ketLines) {
+                text += `• ${line.trim()}\n`;
+            }
+        }
         return text.trim() || 'Dalam Pendataan';
     }
 
@@ -119,9 +151,17 @@ const formatDataPerDesa = (items, villages) => {
         } else if (item.status === 'PENDING') {
             text += '• _Dalam Pendataan_\n';
         } else {
-            if (item.jumlah_kk > 0) text += `• ${item.jumlah_kk} KK\n`;
-            if (item.jumlah_jiwa > 0) text += `• ${item.jumlah_jiwa} Jiwa\n`;
-            if (item.keterangan) text += `• ${item.keterangan}\n`;
+            const jiwakk = [];
+            if (item.jumlah_kk > 0) jiwakk.push(`${item.jumlah_kk} KK`);
+            if (item.jumlah_jiwa > 0) jiwakk.push(`${item.jumlah_jiwa} Jiwa`);
+            if (jiwakk.length > 0) text += `• ${jiwakk.join(' / ')}\n`;
+
+            if (item.keterangan) {
+                const ketLines = item.keterangan.split('\n').filter(l => l.trim() !== '');
+                for (const line of ketLines) {
+                    text += `• ${line.trim()}\n`;
+                }
+            }
         }
     }
     return text.trim();
@@ -145,10 +185,21 @@ const formatBulletList = (items) => {
  * @returns {string} Formatted WhatsApp message
  */
 const generateWhatsAppMessage = (data) => {
-    const vars = {
-        kabupaten: data.regency || '',
-        kecamatan: data.district || '',
-        jenis_bencana: data.disaster_type_name || '',
+    const cleanRegency = (data.regency || '').replace(/^(Kabupaten|Kab\.|Kota)\s+/i, '').trim();
+    const isKota = cleanRegency.toLowerCase() === 'palu';
+    const titleCaseKota = isKota ? 'Kota' : 'Kab.';
+
+    const applyVars = (text) => {
+        let t = text.replace(/\{kecamatan\}/ig, data.district || '');
+        t = t.replace(/\{jenis_bencana\}/ig, data.disaster_type_name || '');
+        
+        // Smart replace: if template explicitly says "Kab. {kabupaten}" it auto converts properly
+        t = t.replace(/kab\.\s*\{kabupaten\}/ig, `${titleCaseKota} ${cleanRegency}`);
+        t = t.replace(/kabupaten\s*\{kabupaten\}/ig, `${isKota ? 'Kota' : 'Kabupaten'} ${cleanRegency}`);
+        
+        // Fallback for just {kabupaten}
+        t = t.replace(/\{kabupaten\}/ig, cleanRegency);
+        return t;
     };
 
     const waktuLaporan = formatDate(data.waktu_laporan);
@@ -157,7 +208,7 @@ const generateWhatsAppMessage = (data) => {
 
     // Build steps text
     const stepsText = (data.steps || []).map((s, i) => {
-        const text = replaceVariables(s.langkah, vars);
+        const text = applyVars(s.langkah);
         return `${i + 1}. ${text}`;
     }).join('\n') || '-';
 
@@ -174,14 +225,20 @@ const generateWhatsAppMessage = (data) => {
 
     // Build sources text
     const sourcesText = (data.sources || []).map((s, i) => {
-        const text = replaceVariables(s.sumber, vars);
-        return `${i + 1}. ${text}`;
+        const text = applyVars(s.sumber);
+        return `${i + 1}. ${text.toUpperCase()}`;
     }).join('\n') || '-';
 
     // Build the message
+    let headerText = `Izin melaporkan Informasi *Kejadian ${data.disaster_type_name} ${lokasiJudul}* sebagai berikut :`;
+    if (data.update_type === 'UPDATE' && data.last_update_time) {
+        const updateWaktu = formatDate(data.last_update_time);
+        headerText = `Izin melaporkan Informasi *(Update ${updateWaktu.hari}, ${updateWaktu.tanggal} Pukul ${updateWaktu.waktu} WITA) Kejadian ${data.disaster_type_name} ${lokasiJudul}* sebagai berikut :`;
+    }
+
     const message = `${formatHeader(data.recipients || [])}
 
-Izin melaporkan Informasi Kejadian *${data.disaster_type_name} ${lokasiJudul}* sebagai berikut :
+${headerText}
 
 📌 *JENIS BENCANA*
 ${data.disaster_type_name}
@@ -223,6 +280,9 @@ ${situationsText}
 📌 *TITIK LOKASI*
 ${data.peta_link || 'Belum tersedia'}
 
+📌 *DOKUMENTASI*
+${(data.photos && data.photos.length > 0) ? `Terlampir ${data.photos.length} foto dokumentasi kejadian.` : '_Belum ada dokumentasi_'}
+
 📌 *SUMBER*
 ${sourcesText}
 
@@ -236,5 +296,6 @@ ${sourcesText}
 module.exports = {
     generateWhatsAppMessage,
     formatDate,
+    generateMapSlug,
     DEFAULT_RECIPIENTS,
 };

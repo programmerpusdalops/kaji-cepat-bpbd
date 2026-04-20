@@ -2,17 +2,41 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Sistem Kaji Cepat Bencana BPBD</title>
-    <meta name="description" content="Sistem Informasi Disaster Rapid Assessment BPBD" />
-    <meta name="author" content="BPBD" />
+    <meta name="description" content="Sistem Informasi Disaster Rapid Assessment BPBD Provinsi Sulawesi Tengah" />
+    <meta name="author" content="BPBD Sulawesi Tengah" />
 
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="KajiCepat" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="Sistem Kaji Cepat Bencana BPBD" />
     <meta property="og:description" content="Sistem Informasi Disaster Rapid Assessment BPBD Provinsi Sulawesi Tengah" />
     <meta property="og:type" content="website" />
-    
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Sistem Kaji Cepat Bencana" />
+
+    <!-- Prevent FOUC: apply stored theme before first paint -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('bpbd_theme');
+        var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+        document.querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', dark ? '#0f1219' : '#f5f6f8');
+      })();
+    </script>
   </head>
 
   <body>

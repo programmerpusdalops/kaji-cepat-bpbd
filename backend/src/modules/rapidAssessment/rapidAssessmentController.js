@@ -34,6 +34,20 @@ const getById = async (req, res, next) => {
     }
 };
 
+const uploadPhotos = async (req, res, next) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return errorResponse(res, 'Tidak ada file foto yang diunggah.', 400);
+        }
+
+        // Return array of relative URLs
+        const fileUrls = req.files.map(f => `/uploads/assessments/${f.filename}`);
+        return successResponse(res, 'Foto berhasil diunggah.', fileUrls);
+    } catch (error) {
+        next(error);
+    }
+};
+
 const create = async (req, res, next) => {
     try {
         const errors = validationResult(req);
@@ -108,6 +122,18 @@ const getWALogs = async (req, res, next) => {
     }
 };
 
+const updateStatus = async (req, res, next) => {
+    try {
+        const { status } = req.body;
+        if (!status) return errorResponse(res, 'Status wajib diisi.', 422);
+
+        const data = await service.updateStatus(parseInt(req.params.id), status);
+        return successResponse(res, 'Status kaji cepat berhasil diperbarui.', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getAll,
     getDropdown,
@@ -119,4 +145,6 @@ module.exports = {
     sendWA,
     resendWA,
     getWALogs,
+    updateStatus,
+    uploadPhotos,
 };

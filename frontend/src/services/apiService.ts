@@ -1,9 +1,9 @@
-/*
-  API Service — connects React frontend to Express.js backend
-  Base URL: /api/v1 (proxied to http://localhost:5000 by Vite in dev)
-*/
+import { saveOfflineRequest, getPendingCount } from "@/lib/offlineDB";
 
 const BASE_URL = "/api/v1";
+
+// Endpoints that must NEVER be queued offline
+const ONLINE_ONLY_PATHS = ["/auth/login", "/auth/change-password"];
 
 // ──────────────── Helper ────────────────
 
@@ -11,6 +11,7 @@ const getToken = (): string | null => localStorage.getItem("bpbd_token");
 
 const apiFetch = async (path: string, options: RequestInit = {}) => {
   const token = getToken();
+  const method = (options.method || "GET").toUpperCase();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
   };
@@ -19,7 +20,50 @@ const apiFetch = async (path: string, options: RequestInit = {}) => {
     headers["Content-Type"] = "application/json";
   }
 
+  // ── Offline-first: queue writes when offline ──
+  const isWriteMethod = ["POST", "PUT", "PATCH"].includes(method);
+  const isOnlineOnly = ONLINE_ONLY_PATHS.some((p) => path.startsWith(p));
+  const isFormData = options.body instanceof FormData;
+
+  if (!navigator.onLine && isWriteMethod && !isOnlineOnly && !isFormData) {
+    // Queue to IndexedDB
+    const bodyStr = typeof options.body === "string" ? options.body : "";
+    await saveOfflineRequest(
+      `${BASE_URL}${path}`,
+      method,
+      bodyStr,
+      headers
+    );
+
+    // Try to register background sync
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if ("sync" in reg) {
+          await (reg as any).sync.register("offline-sync");
+        }
+      } catch {
+        // sync not supported, will manual-sync on online event
+      }
+    }
+
+    return {
+      success: true,
+      message: "Data disimpan offline — akan otomatis terkirim saat online",
+      data: { _offline: true, _pendingCount: await getPendingCount() },
+    };
+  }
+
+  // ── Normal online flow ──
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+
+  if (res.status === 401 && path !== "/auth/login") {
+    localStorage.removeItem("bpbd_user");
+    localStorage.removeItem("bpbd_token");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+
   const json = await res.json();
 
   if (!json.success) {
@@ -230,6 +274,34 @@ export const deleteRegion = async (id: number) => {
   return json;
 };
 
+// ──────────────── Wilayah EMSIFA ────────────────
+
+export const getEmsifaProvinces = async () => {
+  const json = await apiFetch("/wilayah/provinces");
+  return json.data;
+};
+
+export const getEmsifaRegencies = async (provinceId: string) => {
+  const json = await apiFetch(`/wilayah/regencies?province_id=${provinceId}`);
+  return json.data;
+};
+
+export const getEmsifaDistricts = async (regencyId: string) => {
+  const json = await apiFetch(`/wilayah/districts?regency_id=${regencyId}`);
+  return json.data;
+};
+
+export const getEmsifaVillages = async (districtId: string) => {
+  const json = await apiFetch(`/wilayah/villages?district_id=${districtId}`);
+  return json.data;
+};
+
+export const syncAllEmsifaSulteng = async () => {
+  const json = await apiFetch("/wilayah/sync-all", { method: "POST" });
+  return json.data;
+};
+
+
 export const getNeedItems = async () => {
   const json = await apiFetch("/master-data/need-items");
   return json.data;
@@ -256,11 +328,16 @@ export const deleteNeedItem = async (id: number) => {
   return json;
 };
 
-// ──────────────── Team Assignment (stub) ────────────────
+// ──────────────── Team Assignment (Full CRUD) ────────────────
 
 export const getTeamAssignments = async () => {
   const json = await apiFetch("/team-assignments").catch(() => ({ data: [] }));
   return json.data || [];
+};
+
+export const getTeamAssignmentById = async (id: number) => {
+  const json = await apiFetch(`/team-assignments/${id}`);
+  return json.data;
 };
 
 export const createTeamAssignment = async (payload: any) => {
@@ -269,6 +346,19 @@ export const createTeamAssignment = async (payload: any) => {
     body: JSON.stringify(payload),
   });
   return json.data;
+};
+
+export const updateTeamAssignment = async (id: number, payload: any) => {
+  const json = await apiFetch(`/team-assignments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return json.data;
+};
+
+export const deleteTeamAssignment = async (id: number) => {
+  const json = await apiFetch(`/team-assignments/${id}`, { method: "DELETE" });
+  return json;
 };
 
 // ──────────────── Field Assessment (stub) ────────────────
@@ -335,29 +425,11 @@ export const getDisasterMapData = async () => {
   }));
 };
 
-// ──────────────── Dashboard (aggregated from real data) ────────────────
+// ──────────────── Dashboard (from real backend endpoint) ────────────────
 
 export const getDashboardData = async () => {
-  const assessments = await getRapidAssessments().catch(() => []);
-  const types = await getDisasterTypes().catch(() => []);
-
-  const byType = types.map((t: any) => ({
-    name: t.name,
-    value: assessments.filter((a: any) => a.disaster_type_name === t.name).length,
-    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
-  })).filter((t: any) => t.value > 0);
-
-  return {
-    stats: {
-      total_disaster: assessments.length,
-      total_victims: 0,
-      total_refugees: 0,
-      total_damage: 0,
-    },
-    byType,
-    trend: [],
-    mapPoints: [],
-  };
+  const json = await apiFetch("/dashboard");
+  return json.data;
 };
 
 export const generateReport = async (type: string) => {
@@ -454,6 +526,14 @@ export const deleteRapidAssessment = async (id: number) => {
   return json;
 };
 
+export const updateRapidAssessmentStatus = async (id: number, status: string) => {
+  const json = await apiFetch(`/rapid-assessments/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  return json.data;
+};
+
 export const generateWAMessage = async (id: number) => {
   const json = await apiFetch(`/rapid-assessments/${id}/generate-wa`, { method: "POST" });
   return json.data;
@@ -475,6 +555,16 @@ export const resendWA = async (id: number) => {
 export const getWALogs = async (id: number) => {
   const json = await apiFetch(`/rapid-assessments/${id}/wa-logs`);
   return json.data;
+};
+
+export const uploadAssessmentPhotos = async (files: File[]): Promise<string[]> => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("photos", file));
+  const json = await apiFetch("/rapid-assessments/upload-photos", {
+    method: "POST",
+    body: formData,
+  });
+  return json.data; // string[] of relative URLs
 };
 
 // ──────────────── Juklak Field Assessment ────────────────
@@ -539,6 +629,38 @@ export const downloadReportPdf = async (assessmentId: number) => {
   const blob = await res.blob();
   const cd = res.headers.get("Content-Disposition") || "";
   const filename = cd.match(/filename="?([^"]+)"?/)?.[1] || `laporan_${assessmentId}.pdf`;
+  return { blob, filename };
+};
+
+// ──────────────── Surat Tugas Generator (GET-based) ────────────────
+
+export const downloadSuratTugasDocx = async (assignmentId: number) => {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surat-tugas/generate/${assignmentId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({ message: "Generate gagal" }));
+    throw new Error(json.message || "Generate Surat Tugas gagal");
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const filename = cd.match(/filename="?([^"]+)"?/)?.[1] || `Surat_Tugas_${assignmentId}.docx`;
+  return { blob, filename };
+};
+
+export const downloadSuratTugasPdf = async (assignmentId: number) => {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}/surat-tugas/generate/${assignmentId}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({ message: "Generate gagal" }));
+    throw new Error(json.message || "Generate Surat Tugas PDF gagal");
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const filename = cd.match(/filename="?([^"]+)"?/)?.[1] || `Surat_Tugas_${assignmentId}.pdf`;
   return { blob, filename };
 };
 

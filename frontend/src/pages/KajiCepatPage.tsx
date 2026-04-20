@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRapidAssessments, deleteRapidAssessment, generateWAMessage } from "@/services/apiService";
+import { getRapidAssessments, deleteRapidAssessment, generateWAMessage, updateRapidAssessmentStatus, getRapidAssessmentById } from "@/services/apiService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Search, Eye, Pencil, Trash2, Send, Copy, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Send, Copy, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function KajiCepatPage() {
@@ -15,8 +15,10 @@ export default function KajiCepatPage() {
   const [loading, setLoading] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMsg, setPreviewMsg] = useState("");
+  const [previewPhotos, setPreviewPhotos] = useState<string[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [sentConfirm, setSentConfirm] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const loadData = async () => {
@@ -42,8 +44,13 @@ export default function KajiCepatPage() {
     try {
       setPreviewLoading(true);
       setPreviewOpen(true);
-      const data = await generateWAMessage(id);
-      setPreviewMsg(data.message);
+      setPreviewPhotos([]); // Reset while loading
+      const [waData, assessmentData] = await Promise.all([
+        generateWAMessage(id),
+        getRapidAssessmentById(id)
+      ]);
+      setPreviewMsg(waData.message);
+      setPreviewPhotos(assessmentData.photos?.map((p: any) => p.photo_url) || []);
     } catch {
       toast.error("Gagal generate pesan WA");
     } finally {
@@ -54,6 +61,17 @@ export default function KajiCepatPage() {
   const handleCopy = () => {
     navigator.clipboard.writeText(previewMsg);
     toast.success("Pesan berhasil disalin");
+  };
+
+  const handleMarkAsSent = async (id: number) => {
+    try {
+      await updateRapidAssessmentStatus(id, "SENT");
+      toast.success("Status berhasil diubah menjadi Terkirim");
+      setSentConfirm(null);
+      loadData();
+    } catch {
+      toast.error("Gagal mengubah status");
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -155,6 +173,11 @@ export default function KajiCepatPage() {
                     <Button variant="ghost" size="sm" title="Lihat Preview WA" onClick={() => handlePreview(a.id)}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    {a.status === "DRAFT" && (
+                      <Button variant="ghost" size="sm" title="Tandai Terkirim (Muncul di Dashboard)" className="text-green-600" onClick={() => setSentConfirm(a.id)}>
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" title="Edit" onClick={() => navigate(`/kaji-cepat/${a.id}/edit`)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -180,9 +203,29 @@ export default function KajiCepatPage() {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg max-h-[60vh] overflow-auto font-sans">
-              {previewMsg}
-            </pre>
+            <div className="space-y-4">
+              <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg max-h-[60vh] overflow-auto font-sans">
+                {previewMsg}
+              </pre>
+
+              {previewPhotos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Lampiran Dokumentasi ({previewPhotos.length})</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {previewPhotos.map((url, i) => (
+                      <div key={i} className="relative rounded-md overflow-hidden border bg-muted/30 aspect-[4/3]">
+                        <img
+                          src={url}
+                          alt={`Foto ${i + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='%23f3f4f6' width='100' height='100'/><text x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='12'>Foto</text></svg>"; }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>Tutup</Button>
@@ -202,7 +245,25 @@ export default function KajiCepatPage() {
           <p className="text-sm text-muted-foreground">Data yang sudah dihapus tidak dapat dikembalikan.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Batal</Button>
-            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>Hapus</Button>
+            <Button variant="destructive" onClick={() => deleteConfirm !== null && handleDelete(deleteConfirm)}>Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sent Confirm Dialog */}
+      <Dialog open={sentConfirm !== null} onOpenChange={() => setSentConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tandai Sebagai Terkirim?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Pastikan laporan ini sudah benar-benar dibagikan ke grup WhatsApp pimpinan sebelum menandainya sebagai terkirim. Data yang terkirim akan muncul di Dashboard Command Center.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSentConfirm(null)}>Batal</Button>
+            <Button onClick={() => sentConfirm !== null && handleMarkAsSent(sentConfirm)} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+              <CheckCircle className="h-4 w-4" /> Ya, Sudah Terkirim
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

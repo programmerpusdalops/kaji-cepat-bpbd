@@ -6,25 +6,57 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { hasRouteAccess } from "@/config/rbac";
 import { AppLayout } from "@/layouts/AppLayout";
+import { CommandPalette } from "@/components/CommandPalette";
+import { lazy, Suspense } from "react";
+
+// ── Eager loads (critical path) ──
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
-import TeamAssignmentPage from "@/pages/TeamAssignmentPage";
-import FieldAssessmentPage from "@/pages/FieldAssessmentPage";
-import ImpactPage from "@/pages/ImpactPage";
-import EmergencyNeedsPage from "@/pages/EmergencyNeedsPage";
-import DisasterMapPage from "@/pages/DisasterMapPage";
-import GenerateReportsPage from "@/pages/GenerateReportsPage";
-import UsersPage from "@/pages/UsersPage";
-import MasterDataPage from "@/pages/MasterDataPage";
 import ForbiddenPage from "@/pages/ForbiddenPage";
-import ProfilePage from "@/pages/ProfilePage";
-import CollaborativeMapPage from "@/pages/CollaborativeMapPage";
-import PublicMapPage from "@/pages/PublicMapPage";
-import KajiCepatPage from "@/pages/KajiCepatPage";
-import KajiCepatFormPage from "@/pages/KajiCepatFormPage";
 import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+// ── Lazy loads (code splitting for performance) ──
+const TeamAssignmentPage = lazy(() => import("@/pages/TeamAssignmentPage"));
+const FieldAssessmentPage = lazy(() => import("@/pages/FieldAssessmentPage"));
+const ImpactPage = lazy(() => import("@/pages/ImpactPage"));
+const EmergencyNeedsPage = lazy(() => import("@/pages/EmergencyNeedsPage"));
+const DisasterMapPage = lazy(() => import("@/pages/DisasterMapPage"));
+const GenerateReportsPage = lazy(() => import("@/pages/GenerateReportsPage"));
+const UsersPage = lazy(() => import("@/pages/UsersPage"));
+const MasterDataPage = lazy(() => import("@/pages/MasterDataPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const CollaborativeMapPage = lazy(() => import("@/pages/CollaborativeMapPage"));
+const PublicMapPage = lazy(() => import("@/pages/PublicMapPage"));
+const KajiCepatPage = lazy(() => import("@/pages/KajiCepatPage"));
+const KajiCepatFormPage = lazy(() => import("@/pages/KajiCepatFormPage"));
+
+// ── New pages (Phase 5 & 6) ──
+const FeedsPage = lazy(() => import("@/pages/admin/FeedsPage"));
+const ResourceTrackingPage = lazy(() => import("@/pages/admin/ResourceTrackingPage"));
+const GamificationPage = lazy(() => import("@/pages/trc/GamificationPage"));
+const DigitalCVPage = lazy(() => import("@/pages/trc/DigitalCVPage"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 min cache
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// ── Suspense fallback ──
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <p className="text-sm text-muted-foreground">Memuat halaman...</p>
+      </div>
+    </div>
+  );
+}
 
 /** Redirects to /login if not authenticated */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -48,31 +80,44 @@ function RoleRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
   return (
-    <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        {/* Dashboard & Profile — accessible to all authenticated users */}
-        <Route index element={<DashboardPage />} />
-        <Route path="profile" element={<ProfilePage />} />
+    <>
+      {/* Command Palette — global, rendered outside routes */}
+      {isAuthenticated && <CommandPalette />}
 
-        {/* Role-protected routes */}
-        <Route path="kaji-cepat" element={<RoleRoute><KajiCepatPage /></RoleRoute>} />
-        <Route path="kaji-cepat/new" element={<RoleRoute><KajiCepatFormPage /></RoleRoute>} />
-        <Route path="kaji-cepat/:id/edit" element={<RoleRoute><KajiCepatFormPage /></RoleRoute>} />
-        <Route path="team-assignment" element={<RoleRoute><TeamAssignmentPage /></RoleRoute>} />
-        <Route path="field-assessment" element={<RoleRoute><FieldAssessmentPage /></RoleRoute>} />
-        <Route path="impact" element={<RoleRoute><ImpactPage /></RoleRoute>} />
-        <Route path="emergency-needs" element={<RoleRoute><EmergencyNeedsPage /></RoleRoute>} />
-        <Route path="disaster-map" element={<RoleRoute><DisasterMapPage /></RoleRoute>} />
-        <Route path="collaborative-map" element={<RoleRoute><CollaborativeMapPage /></RoleRoute>} />
-        <Route path="generate-reports" element={<RoleRoute><GenerateReportsPage /></RoleRoute>} />
-        <Route path="users" element={<RoleRoute><UsersPage /></RoleRoute>} />
-        <Route path="master-data" element={<RoleRoute><MasterDataPage /></RoleRoute>} />
-      </Route>
-      {/* Public map — no auth required, outside AppLayout */}
-      <Route path="/public-map/:assessmentId/:slug?" element={<PublicMapPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          {/* Dashboard & Profile — accessible to all authenticated users */}
+          <Route index element={<DashboardPage />} />
+          <Route path="profile" element={<Suspense fallback={<PageLoader />}><ProfilePage /></Suspense>} />
+
+          {/* Role-protected routes */}
+          <Route path="kaji-cepat" element={<RoleRoute><Suspense fallback={<PageLoader />}><KajiCepatPage /></Suspense></RoleRoute>} />
+          <Route path="kaji-cepat/new" element={<RoleRoute><Suspense fallback={<PageLoader />}><KajiCepatFormPage /></Suspense></RoleRoute>} />
+          <Route path="kaji-cepat/:id/edit" element={<RoleRoute><Suspense fallback={<PageLoader />}><KajiCepatFormPage /></Suspense></RoleRoute>} />
+          <Route path="team-assignment" element={<RoleRoute><Suspense fallback={<PageLoader />}><TeamAssignmentPage /></Suspense></RoleRoute>} />
+          <Route path="field-assessment" element={<RoleRoute><Suspense fallback={<PageLoader />}><FieldAssessmentPage /></Suspense></RoleRoute>} />
+          <Route path="impact" element={<RoleRoute><Suspense fallback={<PageLoader />}><ImpactPage /></Suspense></RoleRoute>} />
+          <Route path="emergency-needs" element={<RoleRoute><Suspense fallback={<PageLoader />}><EmergencyNeedsPage /></Suspense></RoleRoute>} />
+          <Route path="disaster-map" element={<RoleRoute><Suspense fallback={<PageLoader />}><DisasterMapPage /></Suspense></RoleRoute>} />
+          <Route path="collaborative-map" element={<RoleRoute><Suspense fallback={<PageLoader />}><CollaborativeMapPage /></Suspense></RoleRoute>} />
+          <Route path="generate-reports" element={<RoleRoute><Suspense fallback={<PageLoader />}><GenerateReportsPage /></Suspense></RoleRoute>} />
+          <Route path="users" element={<RoleRoute><Suspense fallback={<PageLoader />}><UsersPage /></Suspense></RoleRoute>} />
+          <Route path="master-data" element={<RoleRoute><Suspense fallback={<PageLoader />}><MasterDataPage /></Suspense></RoleRoute>} />
+
+          {/* New Phase 5 routes — Admin-only */}
+          <Route path="feeds" element={<RoleRoute><Suspense fallback={<PageLoader />}><FeedsPage /></Suspense></RoleRoute>} />
+          <Route path="resource-tracking" element={<RoleRoute><Suspense fallback={<PageLoader />}><ResourceTrackingPage /></Suspense></RoleRoute>} />
+
+          {/* New Phase 6 routes — TRC-only */}
+          <Route path="gamification" element={<RoleRoute><Suspense fallback={<PageLoader />}><GamificationPage /></Suspense></RoleRoute>} />
+          <Route path="digital-cv" element={<RoleRoute><Suspense fallback={<PageLoader />}><DigitalCVPage /></Suspense></RoleRoute>} />
+        </Route>
+        {/* Public map — no auth required, outside AppLayout */}
+        <Route path="/public-map/:assessmentId/:slug?" element={<PublicMapPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }
 

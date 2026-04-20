@@ -67,6 +67,9 @@ app.use('/api/v1/emergency-needs', require('./modules/emergencyNeeds/emergencyNe
 app.use('/api/v1/map-objects', require('./modules/mapObjects/mapObjectRoutes'));
 app.use('/api/v1/rapid-assessments', require('./modules/rapidAssessment/rapidAssessmentRoutes'));
 app.use('/api/v1/reports', require('./modules/reportGenerator/reportGeneratorRoutes'));
+app.use('/api/v1/surat-tugas', require('./modules/suratTugas/suratTugasRoutes'));
+app.use('/api/v1/dashboard', require('./modules/dashboard/dashboardRoutes'));
+app.use('/api/v1/wilayah', require('./modules/wilayah/wilayahRoutes'));
 
 // --------------- Error Handling ---------------
 app.use(notFoundHandler);
